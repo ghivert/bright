@@ -5,7 +5,6 @@ import gleam/pair
 import gleam/result
 import gleam/string
 import lustre
-import lustre/attribute as a
 import lustre/effect
 import lustre/event as e
 import scart.{type Scart}
