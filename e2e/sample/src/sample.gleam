@@ -102,12 +102,12 @@ fn view(model: Model) {
 }
 
 fn counter(counter: Scart(Data, Computed)) {
-  use data, derived <- scart.view(counter)
+  use data, computed <- scart.view(counter)
   h.div([], [
     h.button([e.on_click(Decrement)], [h.text("-")]),
     h.div([], [h.text(int.to_string(data.counter))]),
-    h.div([], [h.text(int.to_string(derived.double))]),
-    h.div([], [h.text(int.to_string(derived.triple))]),
+    h.div([], [h.text(int.to_string(computed.double))]),
+    h.div([], [h.text(int.to_string(computed.triple))]),
     h.button([e.on_click(Increment)], [h.text("+")]),
   ])
 }
