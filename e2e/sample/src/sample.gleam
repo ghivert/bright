@@ -120,7 +120,7 @@ fn update_data(model: Data, msg: Counter) {
 fn view(model: Model) {
   element.fragment([
     navbar(model),
-    h.div_([], [
+    styles.body([], [
       introduction(model.node),
       explanations(model.node),
       styles.container([], [

@@ -145,3 +145,8 @@ pub fn footer(attrs, children) {
   ])
   |> h.div(attrs, children)
 }
+
+pub fn body(attrs, children) {
+  sketch.class([sketch.max_width(px(1000)), sketch.margin_("auto")])
+  |> h.div(attrs, children)
+}
