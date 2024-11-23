@@ -128,6 +128,10 @@ fn view(model: Model) {
         counter(model.counter_2) |> element.map(Second),
       ]),
     ]),
+    case model.node {
+      "#double" -> element.none()
+      _ -> styles.footer([], [h.text("Made with 💜 at Chou Corp.")])
+    },
   ])
 }
 

@@ -135,3 +135,13 @@ pub fn counter_wrapper(attrs, children) {
   ])
   |> h.div(attrs, children)
 }
+
+pub fn footer(attrs, children) {
+  sketch.class([
+    sketch.text_align("center"),
+    sketch.margin_top(px(60)),
+    sketch.margin_bottom(px(30)),
+    sketch.color("#888"),
+  ])
+  |> h.div(attrs, children)
+}
