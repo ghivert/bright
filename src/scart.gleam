@@ -103,6 +103,19 @@ pub fn view(
   viewer(scart.data, scart.computed)
 }
 
+pub fn step(
+  scart: #(Scart(data, computed), Effect(msg)),
+  next: fn(Scart(data, computed)) -> #(model, Effect(msg)),
+) {
+  let #(scart, effs) = scart
+  let #(model, effs_) = next(scart)
+  #(model, effect.batch([effs, effs_]))
+}
+
+pub fn return(a) {
+  #(a, effect.none())
+}
+
 fn panic_if_different_computations_count(
   old_computations: List(c),
   computations: List(d),
