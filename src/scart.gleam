@@ -10,94 +10,103 @@ import lustre/element.{type Element}
 @external(javascript, "./scart.ffi.mjs", "coerce")
 fn coerce(a: a) -> b
 
-pub opaque type Store(data, computed) {
-  Store(
+pub opaque type Scart(data, computed) {
+  Scart(
     data: data,
     computed: computed,
-    computations: List(Dynamic),
-    old_computations: List(Dynamic),
+    selections: List(Dynamic),
+    past_selections: List(Dynamic),
     effects: List(Dynamic),
   )
 }
 
 pub fn init(data: data, computed: computed) {
-  Store(data:, computed:, computations: [], old_computations: [], effects: [])
+  Scart(data:, computed:, selections: [], past_selections: [], effects: [])
 }
 
 pub fn update(
-  derivation: Store(data, computed),
-  updater: fn(data) -> #(data, Effect(msg)),
-  next: fn(Store(data, computed)) -> Store(data, computed),
-) -> #(Store(data, computed), Effect(msg)) {
-  let old_computations = derivation.old_computations
-  let #(data, effs) = updater(derivation.data)
-  let derivation = Store(..derivation, data:)
-  let new_data = next(derivation)
+  scart: Scart(data, computed),
+  update_: fn(data) -> #(data, Effect(msg)),
+  next: fn(Scart(data, computed)) -> Scart(data, computed),
+) -> #(Scart(data, computed), Effect(msg)) {
+  let old_computations = scart.past_selections
+  let #(data, effs) = update_(scart.data)
+  let scart = Scart(..scart, data:)
+  let new_data = next(scart)
   let all_effects = dynamic.from(new_data.effects) |> coerce |> list.reverse
-  panic_if_different_computations_count(old_computations, new_data.computations)
-  let old_computations = list.reverse(new_data.computations)
-  Store(..new_data, old_computations:, computations: [], effects: [])
+  panic_if_different_computations_count(old_computations, new_data.selections)
+  let past_selections = list.reverse(new_data.selections)
+  Scart(..new_data, past_selections:, selections: [], effects: [])
   |> pair.new(effect.batch([effs, effect.batch(all_effects)]))
 }
 
 pub fn compute(
-  derivation: Store(data, computed),
-  compute: fn(data) -> a,
-  setter: fn(computed, a) -> computed,
-) -> Store(data, computed) {
-  compute(derivation.data)
-  |> setter(derivation.computed, _)
-  |> fn(computed) { Store(..derivation, computed:) }
+  scart: Scart(data, computed),
+  compute_: fn(data, computed) -> computed,
+) -> Scart(data, computed) {
+  compute_(scart.data, scart.computed)
+  |> fn(computed) { Scart(..scart, computed:) }
+}
+
+pub fn guard(
+  scart: Scart(data, computed),
+  guard_: fn(data, computed) -> Effect(msg),
+) -> Scart(data, computed) {
+  guard_(scart.data, scart.computed)
+  |> dynamic.from
+  |> list.prepend(scart.effects, _)
+  |> fn(effects) { Scart(..scart, effects:) }
 }
 
 pub fn lazy_compute(
-  derivation: Store(data, computed),
+  scart: Scart(data, computed),
   selector: fn(data) -> a,
-  compute: fn(data) -> b,
-  setter: fn(computed, b) -> computed,
-) -> Store(data, computed) {
-  let new_value = selector(derivation.data)
-  let computations = [dynamic.from(new_value), ..derivation.computations]
-  let derivation = Store(..derivation, computations:)
-  let do_computation = fn(temp) {
-    let memo = compute(derivation.data)
-    let computed = setter(derivation.computed, memo)
-    Store(..temp, computed:)
-  }
-  case derivation.old_computations {
-    [] -> do_computation(derivation)
-    [value, ..old_computations] -> {
-      Store(..derivation, old_computations:)
-      |> case value == dynamic.from(new_value) {
+  compute_: fn(data, computed) -> computed,
+) -> Scart(data, computed) {
+  lazy_wrap(scart, selector, compute, compute_)
+}
+
+pub fn lazy_guard(
+  scart: Scart(data, computed),
+  selector: fn(data) -> a,
+  guard_: fn(data, computed) -> Effect(msg),
+) -> Scart(data, computed) {
+  lazy_wrap(scart, selector, guard, guard_)
+}
+
+fn lazy_wrap(
+  scart: Scart(data, computed),
+  selector: fn(data) -> a,
+  setter: fn(Scart(data, computed), fn(data, computed) -> c) ->
+    Scart(data, computed),
+  compute_: fn(data, computed) -> c,
+) -> Scart(data, computed) {
+  let selected_data = selector(scart.data)
+  let selections = [dynamic.from(selected_data), ..scart.selections]
+  let scart = Scart(..scart, selections:)
+  case scart.past_selections {
+    [] -> setter(scart, compute_)
+    [value, ..past_selections] -> {
+      Scart(..scart, past_selections:)
+      |> case value == dynamic.from(selected_data) {
         True -> function.identity
-        False -> do_computation
+        False -> setter(_, compute_)
       }
     }
   }
 }
 
-pub fn guard(
-  derivation: Store(data, computed),
-  eff: fn(data, computed) -> Effect(msg),
-) {
-  let eff = eff(derivation.data, derivation.computed)
-  add_effect(derivation, eff)
-}
-
 pub fn view(
-  derivation: Store(data, computed),
+  scart: Scart(data, computed),
   viewer: fn(data, computed) -> Element(msg),
-) {
-  viewer(derivation.data, derivation.computed)
+) -> Element(msg) {
+  viewer(scart.data, scart.computed)
 }
 
-fn add_effect(derivation: Store(data, computed), eff: Effect(msg)) {
-  let effect = dynamic.from(eff)
-  let effects = [effect, ..derivation.effects]
-  Store(..derivation, effects:)
-}
-
-fn panic_if_different_computations_count(old_computations, computations) {
+fn panic_if_different_computations_count(
+  old_computations: List(c),
+  computations: List(d),
+) -> Nil {
   let count = list.length(old_computations)
   use <- bool.guard(when: count == 0, return: Nil)
   let is_same_count = count == list.length(computations)

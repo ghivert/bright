@@ -5,7 +5,7 @@ import lustre
 import lustre/effect
 import lustre/element/html as h
 import lustre/event as e
-import scart.{type Store}
+import scart.{type Scart}
 
 pub type Data {
   Data(counter: Int)
@@ -15,20 +15,8 @@ pub type Computed {
   Computed(double: Int, triple: Int, memoized: Int)
 }
 
-fn set_double(computed, double) {
-  Computed(..computed, double:)
-}
-
-fn set_triple(computed, triple) {
-  Computed(..computed, triple:)
-}
-
-fn set_memoized_value(computed, memoized) {
-  Computed(..computed, memoized:)
-}
-
 pub type Model =
-  Store(Data, Computed)
+  Scart(Data, Computed)
 
 pub type Msg {
   Decrement
@@ -38,13 +26,6 @@ pub type Msg {
 pub fn main() {
   lustre.application(init, lifecycle, view)
   |> lustre.start("#app", Nil)
-}
-
-fn clone(t) {
-  case t {
-    [t, ..rest] -> [t, ..clone(rest)]
-    [] -> []
-  }
 }
 
 pub fn init(_: Nil) {
@@ -57,15 +38,12 @@ pub fn init(_: Nil) {
 pub fn lifecycle(model: Model, msg: Msg) {
   use model <- scart.update(model, update(_, msg))
   model
-  |> scart.compute(fn(d) { d.counter * 2 }, set_double)
-  |> scart.compute(fn(d) { d.counter * 3 }, set_triple)
-  |> scart.lazy_compute(
-    fn(d) { d.counter / 10 },
-    fn(d) { io.debug(d.counter * 1000) },
-    set_memoized_value,
-  )
+  |> scart.compute(fn(d, c) { Computed(..c, double: d.counter * 2) })
+  |> scart.compute(fn(d, c) { Computed(..c, triple: d.counter * 3) })
+  |> scart.lazy_compute(fn(d) { d.counter / 10 }, compute_memoized)
   |> scart.guard(warn_on_three)
   |> scart.guard(warn_on_three_multiple)
+  |> scart.lazy_guard(fn(d) { d.counter / 10 }, warn)
 }
 
 pub fn update(model: Data, msg: Msg) {
@@ -87,6 +65,11 @@ pub fn view(model: Model) {
   ])
 }
 
+fn compute_memoized(data: Data, computed: Computed) {
+  let memoized = data.counter * 1000
+  Computed(..computed, memoized:)
+}
+
 fn warn_on_three(data: Data, _: Computed) {
   case data.counter {
     3 -> effect.from(fn(_) { io.println("Three") })
@@ -99,4 +82,9 @@ fn warn_on_three_multiple(data: Data, _: Computed) {
     0 -> effect.from(fn(_) { io.println("Multiple") })
     _ -> effect.none()
   }
+}
+
+fn warn(_, _) {
+  use _ <- effect.from
+  io.println("Warning")
 }
