@@ -4,7 +4,6 @@ import gleam/function
 import gleam/list
 import gleam/pair
 import lustre/effect.{type Effect}
-import lustre/element.{type Element}
 
 @external(erlang, "scart_ffi", "coerce")
 @external(javascript, "./scart.ffi.mjs", "coerce")
@@ -177,10 +176,7 @@ pub fn lazy_guard(
 ///   ])
 /// }
 /// ```
-pub fn view(
-  scart: Scart(data, computed),
-  viewer: fn(data, computed) -> Element(msg),
-) -> Element(msg) {
+pub fn view(scart: Scart(data, computed), viewer: fn(data, computed) -> a) -> a {
   viewer(scart.data, scart.computed)
 }
 
