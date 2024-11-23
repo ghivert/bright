@@ -2,6 +2,7 @@ import gleam/int
 import lustre/attribute as a
 import sketch
 import sketch/lustre/element/html as h
+import sketch/media
 import sketch/size.{px}
 
 pub const fonts = "system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Oxygen,Ubuntu,Cantarell,\"Open Sans\",\"Helvetica Neue\",sans-serif"
@@ -103,6 +104,7 @@ pub fn counter_infos(attrs, children) {
     sketch.flex_direction("column"),
     sketch.justify_content("end"),
     sketch.padding(px(10)),
+    sketch.media(media.max_width(px(400)), [sketch.width(px(200))]),
   ])
   |> h.div(attrs, children)
 }
@@ -116,6 +118,10 @@ pub fn container(attrs, children) {
     sketch.display("flex"),
     sketch.gap(px(10)),
     sketch.justify_content("center"),
+    sketch.media(media.max_width(px(700)), [
+      sketch.flex_direction("column"),
+      sketch.align_items("center"),
+    ]),
   ])
   |> h.div([a.class("flickering"), ..attrs], children)
 }
@@ -125,6 +131,7 @@ pub fn counter_wrapper(attrs, children) {
     sketch.position("relative"),
     sketch.width(px(350)),
     sketch.height(px(400)),
+    sketch.media(media.max_width(px(400)), [sketch.width(px(250))]),
   ])
   |> h.div(attrs, children)
 }
