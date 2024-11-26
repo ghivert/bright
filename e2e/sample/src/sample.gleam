@@ -139,10 +139,10 @@ fn introduction(node) {
     "#single" -> element.none()
     _ ->
       h.div(styles.intro(), [], [
-        h.text("SCART is a Lustre's model & update management "),
+        h.text("Bright is a Lustre's model & update management "),
         h.text("package. While your model is the only mutable "),
         h.text("place in your application, you can store almost "),
-        h.text("everything you want inside. SCART provides an "),
+        h.text("everything you want inside. Bright provides an "),
         h.text("abstraction layer on top of Lustre's model, "),
         h.text("and add the ability to derive some data from "),
         h.text("your raw data, add some caching for extensive "),
@@ -159,7 +159,7 @@ fn explanations(node) {
       |> h.div([], [
         styles.title("Dissociated counters"),
         h.text("That second example illustrates the ability to run two "),
-        h.text("SCART counters in the same application, dissociated with "),
+        h.text("Bright counters in the same application, dissociated with "),
         h.text("each other. They both contains two computed, derived "),
         h.text("data, and one lazy data, computed every time the result "),
         h.text("of counter / 10 changes. But that time, when you change "),
@@ -171,7 +171,7 @@ fn explanations(node) {
       h.div(styles.intro(), [], [
         styles.title("Synchronized counters"),
         h.text("That first example illustrates the ability to run two "),
-        h.text("SCART counters in the same application, synchronized "),
+        h.text("Bright counters in the same application, synchronized "),
         h.text("with each other. They both contains two computed, derived "),
         h.text("data, and one lazy data, computed every time the result"),
         h.text("of counter / 10 changes. Open your console, and watch"),
