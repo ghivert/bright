@@ -1,6 +1,6 @@
-# SCART
+# Bright
 
-SCART is a library to help you manage your `model` and your `update` function in
+Bright is a library to help you manage your `model` and your `update` function in
 a [Lustre](https://lustre.build) application. As you probably know, in Lustre,
 your model is the only mutable place of the application, and centralize every
 data your application uses. If you're coming from the JS world, it can seems
@@ -9,13 +9,13 @@ application, whether they're contexts, stores, observables, or anything else.
 
 In such a centralized model, everything is simpler, and just works. However,
 managing your model and your updates can quickly become a mess, with dependent
-data, data splitting, normalization, etc. SCART comes in to help you avoid such
+data, data splitting, normalization, etc. Bright comes in to help you avoid such
 states, by both helping your to maintain a properly defined model, but also
-to define dependant data in an easy way. SCART also provides a powerful caching
+to define dependant data in an easy way. Bright also provides a powerful caching
 system to guarantee to not compute the same information twice!
 
 > As usual, a demo is worth a thousand words, so take a look at
-> [https://scart.chouquette.dev](https://scart.chouquette.dev)!
+> [https://bright.chouquette.dev](https://bright.chouquette.dev)!
 
 If you're used to stores & data management, you can skip the next section, see
 you in the [getting started](#getting-started)!
@@ -23,7 +23,7 @@ you in the [getting started](#getting-started)!
 ## Installation
 
 ```sh
-gleam add scart@1
+gleam add bright@1
 ```
 
 ## Dependent data? Caching system?
@@ -99,15 +99,15 @@ pub fn display_user_page(model, user_id) {
 You have defined here a derived, computed data that depends on two previous data
 you own. Now, every time you need to access the user, you have the address bundled!
 But in a classic application, you would have to define that computation by yourself,
-and make sure to keep it in sync after each update. That's where SCART comes in,
+and make sure to keep it in sync after each update. That's where Bright comes in,
 and do the hard work for you! Instead of having to think to synchronize the data
-when a new data comes in, let SCART does it for you. And with built-in caching
-on-demand, SCART will never recompute the same data twice for intense computations.
+when a new data comes in, let Bright does it for you. And with built-in caching
+on-demand, Bright will never recompute the same data twice for intense computations.
 
 ## Getting Started
 
-SCART handles the hard task of computing the derived data when needed, and as
-such, you have to initialize it at first. SCART accepts two types of data:
+Bright handles the hard task of computing the derived data when needed, and as
+such, you have to initialize it at first. Bright accepts two types of data:
 your main model, holding the raw data, and your derived, computed data. Because
 Gleam is strongly-typed language, you'll have to define those data by hand.
 A counter will be used to illustrate how to use it.
@@ -125,23 +125,23 @@ pub type Computed {
 
 /// Define an alias, to simplify reference to the model.
 pub type Model =
-  Scart(Data, Computed)
+  Bright(Data, Computed)
 
-// In your init function, you'll initialize SCART. You can use it as-is as a
+// In your init function, you'll initialize Bright. You can use it as-is as a
 // replacement for your model.
 pub fn init() {
   let data = Data(counter: 0)
   let computed = Computed(double: 0)
-  let model = scart.init(data, computed)
-  // scart.return is a helper to write nice little DSL.
-  scart.return(model)
+  let model = bright.init(data, computed)
+  // bright.return is a helper to write nice little DSL.
+  bright.return(model)
 }
 ```
 
-Once SCART is initialized, you have to modify a bit your update function. Now,
+Once Bright is initialized, you have to modify a bit your update function. Now,
 instead of simply receiving the message and modifying your model, you'll have to
-run that modification through SCART. You can then chain your computation calls
-to the SCART object. And of course, derived data can be computed from pre-computed
+run that modification through Bright. You can then chain your computation calls
+to the Bright object. And of course, derived data can be computed from pre-computed
 derived data!
 
 ```gleam
@@ -152,23 +152,23 @@ pub type Msg {
 
 pub fn update(model: Model, msg: Msg) {
   // By using function capture, we can easily use our update function here.
-  // scart.update will automatically run your update against data, here our
+  // bright.update will automatically run your update against data, here our
   // Data record. Like every update function, that function have to return
   // a #(Data, Effect(Msg)). The message will automatically be batched with
   // next messages.
-  // Finally, Scart(Data, Computed) is returned, with Data updated. To let you
+  // Finally, Bright(Data, Computed) is returned, with Data updated. To let you
   // continue the chain.
-  use model <- scart.update(model, update_data(_, msg))
+  use model <- bright.update(model, update_data(_, msg))
   model
-  // scart.compute will compute the new derived data, and let you set it in
+  // bright.compute will compute the new derived data, and let you set it in
   // the computed. You can also simply return the original computed, in which
   // case the data is not updated.
-  |> scart.compute(fn(data, computed) { Computed(..computed, double: d.counter * 2) })
-  // scart.lazy_compute will compute the new derived data, if and only if the
+  |> bright.compute(fn(data, computed) { Computed(..computed, double: d.counter * 2) })
+  // bright.lazy_compute will compute the new derived data, if and only if the
   // selector you pass as the first argument changed between two renders.
   // In case the selector did not change, the old data is kept in memory for the
   // next render.
-  |> scart.lazy_compute(
+  |> bright.lazy_compute(
     // That selector value is compared at every render.
     fn (data) { data.counter / 10 },
     fn(data, computed) { Computed(..computed, double: d.counter * 2) }
@@ -188,7 +188,7 @@ function!
 
 ```gleam
 pub fn view(model: Model) {
-  use data, computed <- scart.view(model)
+  use data, computed <- bright.view(model)
   // You can use data & computed with correct, up to date data.
   html.div([], [])
 }
@@ -201,32 +201,32 @@ derived data, everything is kept in-sync directly for you!
 
 Sometimes, you also have to define side-effects that run after your computations
 have run. Because you figure out the data is finally incorrect. Or because your
-user have written a false URL in the address bar. SCART got you covered too!
-Just use `scart.guard`, and let the side-effects flow automatically in your app,
+user have written a false URL in the address bar. Bright got you covered too!
+Just use `bright.guard`, and let the side-effects flow automatically in your app,
 only when you need it!
 
 ```gleam
 pub fn update(model: Model, msg: Msg) {
-  use model <- scart.update(model, update_data(_, msg))
+  use model <- bright.update(model, update_data(_, msg))
   model
-  |> scart.compute(fn(data, computed) { Computed(..computed, double: d.counter * 2) })
-  |> scart.lazy_compute(
+  |> bright.compute(fn(data, computed) { Computed(..computed, double: d.counter * 2) })
+  |> bright.lazy_compute(
     fn (data) { data.counter / 10 },
     fn(data, computed) { Computed(..computed, double: d.counter * 2) }
   )
-  // scart.guard will run at every render, and let you the possibility to issue
-  // a side-effect. SCART will take care to gather them, and provide them to the
+  // bright.guard will run at every render, and let you the possibility to issue
+  // a side-effect. Bright will take care to gather them, and provide them to the
   // runtime!
-  |> scart.guard(fn (data, computed) {
+  |> bright.guard(fn (data, computed) {
     effect.from(fn (dispatch) {
       io.println("That side-effect will run at every render!")
     })
   })
-  // scart.lazy_guard will issue the side-effect, if and only if the
+  // bright.lazy_guard will issue the side-effect, if and only if the
   // selector you pass as the first argument changed between two renders.
   // In case the selector did not change, the old data is kept in memory for the
   // next render.
-  |> scart.lazy_guard(
+  |> bright.lazy_guard(
     fn (data) { data.counter / 10 },
     fn (data, computed) {
       effect.from(fn (dispatch) {
@@ -237,17 +237,17 @@ pub fn update(model: Model, msg: Msg) {
 }
 ```
 
-## Combining multiple SCART
+## Combining multiple Bright
 
-Sometimes, you also need to combine multiple SCART in the same model. While you
-can keep a `Scart` as model, you could want to combine them, to handle one `Scart`
-by page for example. `scart.step` helps you to do this.
+Sometimes, you also need to combine multiple Bright in the same model. While you
+can keep a `Bright` as model, you could want to combine them, to handle one `Bright`
+by page for example. `bright.step` helps you to do this.
 
 ```gleam
 pub type Model {
   Model(
-    counter_1: Scart(Data, Computed),
-    counter_2: Scart(Data, Computed),
+    counter_1: Bright(Data, Computed),
+    counter_2: Bright(Data, Computed),
   )
 }
 
@@ -262,11 +262,11 @@ pub type Counter {
 }
 
 /// Here, we define a new update function, that calls our previously defined
-/// update function. It keeps the two SCART synchronized by running the full
+/// update function. It keeps the two Bright synchronized by running the full
 /// updated cycle on each of them.
 fn update_both_counters(model: Model, msg: Msg) {
-  use counter_1 <- scart.step(update(model.counter_1, msg.counter))
-  use counter_2 <- scart.step(update(model.counter_2, msg.counter))
-  scart.return(Model(..model, counter_1:, counter_2:))
+  use counter_1 <- bright.step(update(model.counter_1, msg.counter))
+  use counter_2 <- bright.step(update(model.counter_2, msg.counter))
+  bright.return(Model(..model, counter_1:, counter_2:))
 }
 ```

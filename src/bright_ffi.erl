@@ -1,4 +1,4 @@
--module(scart_ffi).
+-module(bright_ffi).
 
 -export([coerce/1]).
 

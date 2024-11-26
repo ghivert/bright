@@ -1,3 +1,4 @@
+import bright.{type Bright}
 import gleam/bool
 import gleam/int
 import gleam/io
@@ -7,7 +8,6 @@ import gleam/string
 import lustre
 import lustre/effect
 import lustre/event as e
-import scart.{type Scart}
 import sketch
 import sketch/lustre as sketch_
 import sketch/lustre/element
@@ -31,8 +31,8 @@ pub type Computed {
 pub type Model {
   Model(
     node: String,
-    counter_1: Scart(Data, Computed),
-    counter_2: Scart(Data, Computed),
+    counter_1: Bright(Data, Computed),
+    counter_2: Bright(Data, Computed),
   )
 }
 
@@ -64,27 +64,27 @@ fn start(cache, update, node) {
 fn init(node: String) {
   let data = Data(counter: 0)
   let computed = Computed(double: 0, triple: 0, memoized: 0, last_lazy: 0)
-  let counter = scart.init(data, computed)
-  scart.return(Model(node:, counter_1: counter, counter_2: counter))
+  let counter = bright.init(data, computed)
+  bright.return(Model(node:, counter_1: counter, counter_2: counter))
 }
 
 /// Here, update both fields in `Model` with the Counter message.
-/// Both counters are synchronized, both execute the full lifecycle
+/// Both counters are synchronized, both exebright the full lifecycle
 /// and both side-effects run as desired.
 fn update_both(model: Model, msg: Msg) {
-  use counter_1 <- scart.step(update(model.counter_1, msg.counter))
-  use counter_2 <- scart.step(update(model.counter_2, msg.counter))
-  scart.return(Model(..model, counter_1:, counter_2:))
+  use counter_1 <- bright.step(update(model.counter_1, msg.counter))
+  use counter_2 <- bright.step(update(model.counter_2, msg.counter))
+  bright.return(Model(..model, counter_1:, counter_2:))
 }
 
 /// Here, update only one field, according to the main message.
 /// The other message is not updated.
 fn update_one(model: Model, msg: Msg) {
   let #(data, msg_) = select_data_structure(model, msg)
-  use counter <- scart.step(update(data, msg_))
+  use counter <- bright.step(update(data, msg_))
   case msg {
-    First(..) -> scart.return(Model(..model, counter_1: counter))
-    Second(..) -> scart.return(Model(..model, counter_2: counter))
+    First(..) -> bright.return(Model(..model, counter_1: counter))
+    Second(..) -> bright.return(Model(..model, counter_2: counter))
   }
 }
 
@@ -96,15 +96,15 @@ fn select_data_structure(model: Model, msg: Msg) {
 }
 
 /// Execute the full lifecycle, with derived data, and lazy computations.
-fn update(model: Scart(Data, Computed), msg: Counter) {
-  use model <- scart.update(model, update_data(_, msg))
+fn update(model: Bright(Data, Computed), msg: Counter) {
+  use model <- bright.update(model, update_data(_, msg))
   model
-  |> scart.compute(fn(d, c) { Computed(..c, double: d.counter * 2) })
-  |> scart.compute(fn(d, c) { Computed(..c, triple: d.counter * 3) })
-  |> scart.lazy_compute(fn(d) { d.counter / 10 }, compute_memoized)
-  |> scart.guard(warn_on_three)
-  |> scart.guard(warn_on_three_multiple)
-  |> scart.lazy_guard(fn(d) { d.counter / 10 }, warn)
+  |> bright.compute(fn(d, c) { Computed(..c, double: d.counter * 2) })
+  |> bright.compute(fn(d, c) { Computed(..c, triple: d.counter * 3) })
+  |> bright.lazy_compute(fn(d) { d.counter / 10 }, compute_memoized)
+  |> bright.guard(warn_on_three)
+  |> bright.guard(warn_on_three_multiple)
+  |> bright.lazy_guard(fn(d) { d.counter / 10 }, warn)
 }
 
 /// Raw update.
@@ -187,8 +187,8 @@ fn navbar(model: Model) {
   }
 }
 
-fn counter(counter: Scart(Data, Computed)) {
-  use data, computed <- scart.view(counter)
+fn counter(counter: Bright(Data, Computed)) {
+  use data, computed <- bright.view(counter)
   styles.counter_wrapper([], [
     styles.counter([], [
       styles.counter_number(data.counter),
