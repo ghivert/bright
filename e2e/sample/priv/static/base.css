@@ -1,0 +1,73 @@
+@font-face {
+  font-family: "Lexend";
+  src: url("./Lexend.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Fira Code";
+  src: url("./FiraCode.ttf") format("truetype");
+  font-weight: 300 700;
+  font-style: normal;
+}
+
+code {
+  font-family: "Fira Code";
+  font-feature-settings: "calt" 1; /* Enable ligatures for IE 10+, Edge */
+  text-rendering: optimizeLegibility; /* Force ligatures for Webkit, Blink, Gecko */
+  white-space: pre;
+  line-height: 1.5;
+  font-size: 0.8rem;
+}
+
+:root {
+  --background: #ffffff;
+  --dark-background: #eeeeee;
+  --darker-background: #dddddd;
+  --border-color: #cccccc;
+  --button-hover: #f5f5f5;
+  --text-color: #000000;
+  --text-grey: #888888;
+  --icon-hover: #000000;
+  --navbar-background: rgba(250, 250, 250, 0.9);
+
+  --window-border: rgb(223, 234, 255);
+  --window-bg: rgb(241, 246, 255);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #222222;
+    --dark-background: #111111;
+    --darker-background: #000000;
+    --border-color: #444444;
+    --button-hover: #0a0a0a;
+    --text-color: #ffffff;
+    --text-grey: #888888;
+    --icon-hover: #ffffff;
+    --navbar-background: rgba(25, 25, 25, 0.9);
+
+    --window-bg: rgb(45, 46, 50);
+    --window-border: rgb(109, 110, 112);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--text-color);
+  font-family:
+    "Lexend",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    "Open Sans",
+    "Helvetica Neue",
+    sans-serif;
+  line-height: 1.4;
+}

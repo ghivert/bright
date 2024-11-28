@@ -174,7 +174,7 @@ fn explanations(node) {
         h.text("Bright counters in the same application, synchronized "),
         h.text("with each other. They both contains two computed, derived "),
         h.text("data, and one lazy data, computed every time the result"),
-        h.text("of counter / 10 changes. Open your console, and watch"),
+        h.text("of counter / 10 changes. Open your console, and watch "),
         h.text("the side-effects running!"),
       ])
   }
