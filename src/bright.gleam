@@ -225,7 +225,7 @@ pub fn data(bright: Bright(data, computed)) {
 /// Extracts `computed` state from `Bright`.
 ///
 /// ```gleam
-/// pub fn view(model: Bright(computed, computed)) {
+/// pub fn view(model: Bright(data, computed)) {
 ///   let computed = bright.computed(model)
 ///   html.div([], [
 ///     // Use computed here.
