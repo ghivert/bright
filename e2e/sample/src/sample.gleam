@@ -65,7 +65,7 @@ fn init(node: String) {
   let data = Data(counter: 0)
   let computed = Computed(double: 0, triple: 0, memoized: 0, last_lazy: 0)
   let counter = bright.init(data, computed)
-  bright.return(Model(node:, counter_1: counter, counter_2: counter))
+  #(Model(node:, counter_1: counter, counter_2: counter), effect.none())
 }
 
 /// Here, update both fields in `Model` with the Counter message.
@@ -74,7 +74,7 @@ fn init(node: String) {
 fn update_both(model: Model, msg: Msg) {
   use counter_1 <- bright.step(update(model.counter_1, msg.counter))
   use counter_2 <- bright.step(update(model.counter_2, msg.counter))
-  bright.return(Model(..model, counter_1:, counter_2:))
+  #(Model(..model, counter_1:, counter_2:), effect.none())
 }
 
 /// Here, update only one field, according to the main message.
@@ -83,8 +83,8 @@ fn update_one(model: Model, msg: Msg) {
   let #(data, msg_) = select_data_structure(model, msg)
   use counter <- bright.step(update(data, msg_))
   case msg {
-    First(..) -> bright.return(Model(..model, counter_1: counter))
-    Second(..) -> bright.return(Model(..model, counter_2: counter))
+    First(..) -> #(Model(..model, counter_1: counter), effect.none())
+    Second(..) -> #(Model(..model, counter_2: counter), effect.none())
   }
 }
 
@@ -97,14 +97,15 @@ fn select_data_structure(model: Model, msg: Msg) {
 
 /// Execute the full lifecycle, with derived data, and lazy computations.
 fn update(model: Bright(Data, Computed), msg: Counter) {
+  use model <- bright.start(model)
   use model <- bright.update(model, update_data(_, msg))
   model
   |> bright.compute(fn(d, c) { Computed(..c, double: d.counter * 2) })
   |> bright.compute(fn(d, c) { Computed(..c, triple: d.counter * 3) })
   |> bright.lazy_compute(fn(d) { d.counter / 10 }, compute_memoized)
-  |> bright.guard(warn_on_three)
-  |> bright.guard(warn_on_three_multiple)
-  |> bright.lazy_guard(fn(d) { d.counter / 10 }, warn)
+  |> bright.schedule(warn_on_three)
+  |> bright.schedule(warn_on_three_multiple)
+  |> bright.lazy_schedule(fn(d) { d.counter / 10 }, warn)
 }
 
 /// Raw update.
@@ -188,7 +189,7 @@ fn navbar(model: Model) {
 }
 
 fn counter(counter: Bright(Data, Computed)) {
-  use data, computed <- bright.view(counter)
+  let #(data, computed) = bright.unwrap(counter)
   styles.counter_wrapper([], [
     styles.counter([], [
       styles.counter_number(data.counter),
@@ -206,7 +207,7 @@ fn counter(counter: Bright(Data, Computed)) {
   ])
 }
 
-fn compute_memoized(data: Data, computed: Computed) {
+fn compute_memoized(data: Data, computed: Computed, _e) {
   let memoized = data.counter * 1000
   let last_lazy = now()
   Computed(..computed, memoized:, last_lazy:)
@@ -228,7 +229,7 @@ fn warn_on_three_multiple(data: Data, _: Computed) {
   |> io.println
 }
 
-fn warn(_, _) {
+fn warn(_, _, _) {
   use _ <- effect.from
   "This lazy message happened because the result of counter / 10 changed value!"
   |> io.println
