@@ -133,8 +133,7 @@ pub fn init() {
   let data = Data(counter: 0)
   let computed = Computed(double: 0)
   let model = bright.init(data, computed)
-  // bright.return is a helper to write nice little DSL.
-  bright.return(model)
+  #(model, effect.none())
 }
 ```
 
@@ -151,6 +150,8 @@ pub type Msg {
 }
 
 pub fn update(model: Model, msg: Msg) {
+  // bright.start begins the bright update cycle. It's required to use bright
+  // in efficiently.
   // By using function capture, we can easily use our update function here.
   // bright.update will automatically run your update against data, here our
   // Data record. Like every update function, that function have to return
@@ -158,6 +159,7 @@ pub fn update(model: Model, msg: Msg) {
   // next messages.
   // Finally, Bright(Data, Computed) is returned, with Data updated. To let you
   // continue the chain.
+  use model <- bright.start(model)
   use model <- bright.update(model, update_data(_, msg))
   model
   // bright.compute will compute the new derived data, and let you set it in
@@ -167,11 +169,13 @@ pub fn update(model: Model, msg: Msg) {
   // bright.lazy_compute will compute the new derived data, if and only if the
   // selector you pass as the first argument changed between two renders.
   // In case the selector did not change, the old data is kept in memory for the
-  // next render.
+  // next render. When the compute function runs, data, computed and the result
+  // of the selector are provided to the function.
   |> bright.lazy_compute(
     // That selector value is compared at every render.
     fn (data) { data.counter / 10 },
-    fn(data, computed) { Computed(..computed, double: d.counter * 2) }
+    // _counter is equal to data.counter / 10.
+    fn(data, computed, _counter) { Computed(..computed, double: d.counter * 2) }
   )
 }
 
@@ -188,7 +192,7 @@ function!
 
 ```gleam
 pub fn view(model: Model) {
-  use data, computed <- bright.view(model)
+  let #(data, computed) = bright.unwrap(model)
   // You can use data & computed with correct, up to date data.
   html.div([], [])
 }
@@ -197,13 +201,13 @@ pub fn view(model: Model) {
 And you're good to go! Now, you don't have to think anymore to update your
 derived data, everything is kept in-sync directly for you!
 
-## Using guards
+## Scheduling side-effects
 
 Sometimes, you also have to define side-effects that run after your computations
 have run. Because you figure out the data is finally incorrect. Or because your
 user have written a false URL in the address bar. Bright got you covered too!
-Just use `bright.guard`, and let the side-effects flow automatically in your app,
-only when you need it!
+Just use `bright.schedule`, and let the side-effects flow automatically in your
+app, only when you need it!
 
 ```gleam
 pub fn update(model: Model, msg: Msg) {
@@ -214,21 +218,23 @@ pub fn update(model: Model, msg: Msg) {
     fn (data) { data.counter / 10 },
     fn(data, computed) { Computed(..computed, double: d.counter * 2) }
   )
-  // bright.guard will run at every render, and let you the possibility to issue
+  // bright.schedule will run at every render, and let you the possibility to issue
   // a side-effect. Bright will take care to gather them, and provide them to the
   // runtime!
-  |> bright.guard(fn (data, computed) {
+  |> bright.schedule(fn (data, computed) {
     effect.from(fn (dispatch) {
       io.println("That side-effect will run at every render!")
     })
   })
-  // bright.lazy_guard will issue the side-effect, if and only if the
+  // bright.lazy_schedule will issue the side-effect, if and only if the
   // selector you pass as the first argument changed between two renders.
   // In case the selector did not change, the old data is kept in memory for the
-  // next render.
-  |> bright.lazy_guard(
+  // next render. When the compute function runs, data, computed and the result
+  // of the selector are provided to the function.
+  |> bright.lazy_schedule(
     fn (data) { data.counter / 10 },
-    fn (data, computed) {
+    // _counter is equal to data.counter / 10.
+    fn (data, computed, _counter) {
       effect.from(fn (dispatch) {
         io.println("That side-effect will only run when the selector changes!")
       })
@@ -267,6 +273,6 @@ pub type Counter {
 fn update_both_counters(model: Model, msg: Msg) {
   use counter_1 <- bright.step(update(model.counter_1, msg.counter))
   use counter_2 <- bright.step(update(model.counter_2, msg.counter))
-  bright.return(Model(..model, counter_1:, counter_2:))
+  #(Model(..model, counter_1:, counter_2:), effect.none())
 }
 ```

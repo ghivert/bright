@@ -9,11 +9,11 @@ import lustre/effect.{type Effect}
 @external(javascript, "./bright.ffi.mjs", "coerce")
 fn coerce(a: a) -> b
 
-/// Optimization on JS, to ensure two data sharing the referential equality
+/// Optimization on JS, to ensure that two data sharing the referential equality
 /// will shortcut the comparison. Useful when performance are a thing in client
-/// browser.
-@external(javascript, "./bright.ffi.mjs", "areReferentiallyEqual")
-fn are_referentially_equal(a: a, b: b) -> Bool {
+/// browser. Otherwise, rely on Erlang equality.
+@external(javascript, "./bright.ffi.mjs", "areDependenciesEqual")
+fn are_dependencies_equal(a: a, b: b) -> Bool {
   dynamic.from(a) == dynamic.from(b)
 }
 
@@ -31,37 +31,54 @@ pub opaque type Bright(data, computed) {
 
 /// Creates the initial `Bright`. `data` & `computed` should be initialised with
 /// their correct empty initial state.
-pub fn init(
-  data data: data,
-  computed computed: computed,
-) -> Bright(data, computed) {
+pub fn init(data data: data, computed computed: computed) {
   Bright(data:, computed:, selections: [], past_selections: [], effects: [])
 }
 
-/// Entrypoint for the update cycle. Use it a way to trigger the start of `Bright`
+/// Start the Bright update cycle. Use it as a way to trigger the start of `Bright`
 /// computations, and chain them with other `bright` calls.
 ///
 /// ```gleam
 /// pub fn update(model: Bright(data, computed), msg: Msg) {
 ///   // Starts the update cycle, and returns #(Bright(data, computed), Effect(msg)).
+///   use model <- bright.start(model)
+///   use model <- bright.update(update_data(_, msg))
+///   model
+/// }
+/// ```
+pub fn start(
+  bright: Bright(data, computed),
+  next: fn(Bright(data, computed)) -> Bright(data, computed),
+) -> #(Bright(data, computed), Effect(msg)) {
+  let old_computations = bright.past_selections
+  let new_data = next(bright)
+  let all_effects = dynamic.from(new_data.effects) |> coerce |> list.reverse
+  panic_if_different_computations_count(old_computations, new_data.selections)
+  let past_selections = list.reverse(new_data.selections)
+  Bright(..new_data, past_selections:, selections: [], effects: [])
+  |> pair.new(effect.batch(all_effects))
+}
+
+/// Update data & effects during update cycle. Use it a way to trigger the start
+/// of `Bright` computations, and chain them with other `bright` calls.
+///
+/// ```gleam
+/// pub fn update(model: Bright(data, computed), msg: Msg) {
+///   use model <- bright.start(model)
+///   // Run an update, and returns #(data, Effect(msg)).
 ///   use model <- bright.update(model, update_data(_, msg))
-///   bright.return(model)
+///   model
 /// }
 /// ```
 pub fn update(
   bright: Bright(data, computed),
   update_: fn(data) -> #(data, Effect(msg)),
   next: fn(Bright(data, computed)) -> Bright(data, computed),
-) -> #(Bright(data, computed), Effect(msg)) {
-  let old_computations = bright.past_selections
-  let #(data, effs) = update_(bright.data)
-  let bright = Bright(..bright, data:)
-  let new_data = next(bright)
-  let all_effects = dynamic.from(new_data.effects) |> coerce |> list.reverse
-  panic_if_different_computations_count(old_computations, new_data.selections)
-  let past_selections = list.reverse(new_data.selections)
-  Bright(..new_data, past_selections:, selections: [], effects: [])
-  |> pair.new(effect.batch([effs, effect.batch(all_effects)]))
+) -> Bright(data, computed) {
+  let #(data, effects) = update_(bright.data)
+  let effects = [dynamic.from(effects), ..bright.effects]
+  Bright(..bright, data:, effects:)
+  |> next
 }
 
 /// Derives data from the `data` state, and potentially the current `computed`
@@ -70,6 +87,7 @@ pub fn update(
 ///
 /// ```gleam
 /// pub fn update(model: Bright(data, computed), msg: Msg) {
+///   use model <- bright.start(model)
 ///   use model <- bright.update(model, update_data(_, msg))
 ///   model
 ///   |> bright.compute(fn (d, c) { Computed(..c, field1: computation1(d)) })
@@ -90,8 +108,9 @@ pub fn compute(
 ///
 /// ```gleam
 /// pub fn update(model: Bright(data, computed), msg: Msg) {
+///   use model <- bright.start(model)
 ///   use model <- bright.update(model, update_data(_, msg))
-///   use d, c <- bright.guard(model)
+///   use d, c <- bright.schedule(model)
 ///   use dispatch <- effect.from
 ///   case d.field == 10 {
 ///     True -> dispatch(my_msg)
@@ -99,11 +118,11 @@ pub fn compute(
 ///   }
 /// }
 /// ```
-pub fn guard(
+pub fn schedule(
   bright: Bright(data, computed),
-  guard_: fn(data, computed) -> Effect(msg),
+  schedule_: fn(data, computed) -> Effect(msg),
 ) -> Bright(data, computed) {
-  guard_(bright.data, bright.computed)
+  schedule_(bright.data, bright.computed)
   |> dynamic.from
   |> list.prepend(bright.effects, _)
   |> fn(effects) { Bright(..bright, effects:) }
@@ -112,14 +131,19 @@ pub fn guard(
 /// Derives data like [`compute`](#compute) lazily. `lazy_compute` accepts a
 /// selector as second argument. Each time the selector returns a different data
 /// than previous run, the computation will run. Otherwise, nothing happens.
+/// The computation function will receive `data`, `computed` and the selected
+/// data (i.e. the result from your selector function), in case accessing the
+/// selected data is needed.
 ///
 /// ```gleam
 /// pub fn update(model: Bright(data, computed), msg: Msg) {
+///   use model <- bright.start(model)
 ///   use model <- bright.update(model, update_data(_, msg))
 ///   model
-///   |> bright.lazy_compute(selector, fn (d, c) { Computed(..c, field1: computation1(d)) })
-///   |> bright.lazy_compute(selector, fn (d, c) { Computed(..c, field2: computation2(d)) })
-///   |> bright.lazy_compute(selector, fn (d, c) { Computed(..c, field3: computation3(d)) })
+///   // Here, e is always the result data.field / 10 (the result from selector).
+///   |> bright.lazy_compute(selector, fn (d, c, e) { Computed(..c, field1: computation1(d)) })
+///   |> bright.lazy_compute(selector, fn (d, c, e) { Computed(..c, field2: computation2(d)) })
+///   |> bright.lazy_compute(selector, fn (d, c, e) { Computed(..c, field3: computation3(d)) })
 /// }
 ///
 /// /// Use it with lazy_compute to recompute only when the field when
@@ -130,20 +154,25 @@ pub fn guard(
 /// ```
 pub fn lazy_compute(
   bright: Bright(data, computed),
-  selector: fn(data) -> a,
-  compute_: fn(data, computed) -> computed,
+  selector: fn(data) -> selection,
+  compute_: fn(data, computed, selection) -> computed,
 ) -> Bright(data, computed) {
   lazy_wrap(bright, selector, compute, compute_)
 }
 
-/// Plugs in existing `data` like [`guard`](#guard) lazily. `lazy_guard` accepts
+/// Plugs in existing `data` like [`schedule`](#schedule) lazily. `lazy_schedule` accepts
 /// a selector as second argument. Each time the selector returns a different data
 /// than previous run, the computation will run. Otherwise, nothing happens.
+/// The scheduling function will receive `data`, `computed` and the selected
+/// data (i.e. the result from your selector function), in case accessing the
+/// selected data is needed.
 ///
 /// ```gleam
 /// pub fn update(model: Bright(data, computed), msg: Msg) {
+///   use model <- bright.start(model)
 ///   use model <- bright.update(model, update_data(_, msg))
-///   use d, c <- bright.lazy_guard(model, selector)
+///   // e is equal to d.field / 10 (the result from selector).
+///   use d, c, e <- bright.lazy_schedule(model, selector)
 ///   use dispatch <- effect.from
 ///   case d.field == 10 {
 ///     True -> dispatch(my_msg)
@@ -151,36 +180,60 @@ pub fn lazy_compute(
 ///   }
 /// }
 ///
-/// /// Use it with lazy_guard to recompute only when the field when
+/// /// Use it with lazy_schedule to recompute only when the field when
 /// /// { old_data.field / 10 } != { data.field / 10 }
 /// fn selector(d, _) {
 ///   d.field / 10
 /// }
 /// ```
-pub fn lazy_guard(
+pub fn lazy_schedule(
   bright: Bright(data, computed),
-  selector: fn(data) -> a,
-  guard_: fn(data, computed) -> Effect(msg),
+  selector: fn(data) -> selection,
+  schedule_: fn(data, computed, selection) -> Effect(msg),
 ) -> Bright(data, computed) {
-  lazy_wrap(bright, selector, guard, guard_)
+  lazy_wrap(bright, selector, schedule, schedule_)
 }
 
-/// Injects `Bright(data, computed)` in the `view` function, like a middleware.
-/// Used to extract `data` & `computed` states from `Bright`.
+/// Extracts `data` & `computed` states from `Bright`.
 ///
 /// ```gleam
 /// pub fn view(model: Bright(data, computed)) {
-///   use data, computed <- bright.view(model)
+///   let #(data, computed) = bright.unwrap(model)
 ///   html.div([], [
 ///     // Use data or computed here.
 ///   ])
 /// }
 /// ```
-pub fn view(
-  bright: Bright(data, computed),
-  viewer: fn(data, computed) -> a,
-) -> a {
-  viewer(bright.data, bright.computed)
+pub fn unwrap(bright: Bright(data, computed)) {
+  #(bright.data, bright.computed)
+}
+
+/// Extracts `data` state from `Bright`.
+///
+/// ```gleam
+/// pub fn view(model: Bright(data, computed)) {
+///   let data = bright.data(model)
+///   html.div([], [
+///     // Use data here.
+///   ])
+/// }
+/// ```
+pub fn data(bright: Bright(data, computed)) {
+  bright.data
+}
+
+/// Extracts `computed` state from `Bright`.
+///
+/// ```gleam
+/// pub fn view(model: Bright(computed, computed)) {
+///   let computed = bright.computed(model)
+///   html.div([], [
+///     // Use computed here.
+///   ])
+/// }
+/// ```
+pub fn computed(bright: Bright(data, computed)) {
+  bright.computed
 }
 
 /// Allows to run multiple `update` on multiple `Bright` in the same update cycle.
@@ -198,7 +251,7 @@ pub fn view(
 /// fn update(model: Model, msg: Msg) {
 ///   use fst_bright <- bright.step(update_fst(model.fst_bright, msg))
 ///   use snd_bright <- bright.step(update_snd(model.snd_bright, msg))
-///   bright.return(Model(fst_bright:, snd_bright:))
+///   #(Model(fst_bright:, snd_bright:), effect.none())
 /// }
 /// ```
 pub fn step(
@@ -210,26 +263,22 @@ pub fn step(
   #(model, effect.batch([effs, effs_]))
 }
 
-/// Helper to write `bright` update cycle. Equivalent to `#(a, effect.none())`.
-pub fn return(a) {
-  #(a, effect.none())
-}
-
 fn lazy_wrap(
   bright: Bright(data, computed),
-  selector: fn(data) -> a,
-  setter: fn(Bright(data, computed), fn(data, computed) -> c) ->
+  selector: fn(data) -> selection,
+  setter: fn(Bright(data, computed), fn(data, computed) -> output) ->
     Bright(data, computed),
-  compute_: fn(data, computed) -> c,
+  compute_: fn(data, computed, selection) -> output,
 ) -> Bright(data, computed) {
   let selected_data = selector(bright.data)
   let selections = [dynamic.from(selected_data), ..bright.selections]
   let bright = Bright(..bright, selections:)
+  let compute_ = fn(data, computed) { compute_(data, computed, selected_data) }
   case bright.past_selections {
     [] -> setter(bright, compute_)
     [value, ..past_selections] -> {
       Bright(..bright, past_selections:)
-      |> case are_referentially_equal(value, selected_data) {
+      |> case are_dependencies_equal(value, selected_data) {
         True -> function.identity
         False -> setter(_, compute_)
       }
