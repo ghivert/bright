@@ -73,12 +73,10 @@ pub fn start(
 pub fn update(
   bright: Bright(data, computed),
   update_: fn(data) -> #(data, Effect(msg)),
-  next: fn(Bright(data, computed)) -> Bright(data, computed),
 ) -> Bright(data, computed) {
   let #(data, effects) = update_(bright.data)
   let effects = [dynamic.from(effects), ..bright.effects]
   Bright(..bright, data:, effects:)
-  |> next
 }
 
 /// Derives data from the `data` state, and potentially the current `computed`

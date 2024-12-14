@@ -98,8 +98,8 @@ fn select_data_structure(model: Model, msg: Msg) {
 /// Execute the full lifecycle, with derived data, and lazy computations.
 fn update(model: Bright(Data, Computed), msg: Counter) {
   use model <- bright.start(model)
-  use model <- bright.update(model, update_data(_, msg))
   model
+  |> bright.update(update_data(_, msg))
   |> bright.compute(fn(d, c) { Computed(..c, double: d.counter * 2) })
   |> bright.compute(fn(d, c) { Computed(..c, triple: d.counter * 3) })
   |> bright.lazy_compute(fn(d) { d.counter / 10 }, compute_memoized)
