@@ -1,9 +1,5 @@
 import * as gleam from "./gleam.mjs"
 
-export function coerce(a) {
-  return a
-}
-
 /** Special shortcut to gain speed when comparing to identical data between
  * rerenders. If the two data are the same (same object), comparison should be
  * done directly on references. If they're arrays (tuples in Gleam), user wanted

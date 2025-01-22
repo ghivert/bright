@@ -9,10 +9,11 @@ import lustre
 import lustre/effect
 import lustre/event as e
 import sketch
+import sketch/css
+import sketch/css/length.{px}
 import sketch/lustre as sketch_
 import sketch/lustre/element
 import sketch/lustre/element/html as h
-import sketch/size.{px}
 import styles
 
 @external(javascript, "./sample.ffi.mjs", "dateNow")
@@ -49,15 +50,14 @@ pub type Counter {
 /// It's possible to switch between `update_both` and `update_one`
 /// to see how it works actually.
 pub fn main() {
-  let assert Ok(cache) = sketch.cache(strategy: sketch.Ephemeral)
-  use _ <- result.try(start(cache, update_one, "#single"))
-  use _ <- result.try(start(cache, update_both, "#double"))
+  let assert Ok(stylesheet) = sketch.stylesheet(strategy: sketch.Ephemeral)
+  use _ <- result.try(start(stylesheet, update_one, "#single"))
+  use _ <- result.try(start(stylesheet, update_both, "#double"))
   Ok(Nil)
 }
 
-fn start(cache, update, node) {
-  let view = sketch_.compose(sketch_.node(), view, cache)
-  lustre.application(init, update, view)
+fn start(stylesheet: sketch.StyleSheet, update, node: String) {
+  lustre.application(init, update, view(_, stylesheet))
   |> lustre.start(node, node)
 }
 
@@ -117,7 +117,8 @@ fn update_data(model: Data, msg: Counter) {
   |> pair.new(effect.none())
 }
 
-fn view(model: Model) {
+fn view(model: Model, stylesheet: sketch.StyleSheet) {
+  use <- sketch_.render(stylesheet, [sketch_.node()])
   element.fragment([
     navbar(model),
     styles.body([], [
@@ -156,7 +157,7 @@ fn introduction(node) {
 fn explanations(node) {
   case node {
     "#single" ->
-      sketch.class([sketch.compose(styles.intro()), sketch.margin_top(px(60))])
+      css.class([css.compose(styles.intro()), css.margin_top(px(60))])
       |> h.div([], [
         styles.title("Dissociated counters"),
         h.text("That second example illustrates the ability to run two "),

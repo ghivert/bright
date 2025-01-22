@@ -23,7 +23,7 @@ you in the [getting started](#getting-started)!
 ## Installation
 
 ```sh
-gleam add bright@1
+gleam add bright
 ```
 
 ## Dependent data? Caching system?
@@ -143,6 +143,10 @@ run that modification through Bright. You can then chain your computation calls
 to the Bright object. And of course, derived data can be computed from pre-computed
 derived data!
 
+All bright functions are thought to work with `#(Bright(data, computed), Effect(msg))`
+data, to work nicely with Lustre while staying type-safe. `bright.start` launch
+the update cycle, and then, you can chain as much computations as you want!
+
 ```gleam
 pub type Msg {
   Increment
@@ -150,18 +154,20 @@ pub type Msg {
 }
 
 pub fn update(model: Model, msg: Msg) {
-  // bright.start begins the bright update cycle. It's required to use bright
-  // in efficiently.
+  // bright.start begins the bright update cycle. Always use bright.start,
+  // because start takes cares of lazy computations and cleanup.
+  use model <- bright.start(model)
+  // We can now chain computations on our #(Bright(data, computed), Effect(msg))
+  // data newly created.
+  model
   // By using function capture, we can easily use our update function here.
   // bright.update will automatically run your update against data, here our
   // Data record. Like every update function, that function have to return
   // a #(Data, Effect(Msg)). The message will automatically be batched with
   // next messages.
-  // Finally, Bright(Data, Computed) is returned, with Data updated. To let you
-  // continue the chain.
-  use model <- bright.start(model)
-  use model <- bright.update(model, update_data(_, msg))
-  model
+  // Finally, #(Bright(Data, Computed), Effect(msg)) is returned, with Data
+  // updated. To let you continue the chain.
+  |> bright.update(update_data(_, msg))
   // bright.compute will compute the new derived data, and let you set it in
   // the computed. You can also simply return the original computed, in which
   // case the data is not updated.
@@ -270,6 +276,8 @@ pub type Counter {
 /// Here, we define a new update function, that calls our previously defined
 /// update function. It keeps the two Bright synchronized by running the full
 /// updated cycle on each of them.
+/// Every effects are gathered during computations, and you can even issue
+/// messages at the end of the update cycle, before returning your model.
 fn update_both_counters(model: Model, msg: Msg) {
   use counter_1 <- bright.step(update(model.counter_1, msg.counter))
   use counter_2 <- bright.step(update(model.counter_2, msg.counter))
