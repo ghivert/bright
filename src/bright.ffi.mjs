@@ -25,6 +25,6 @@ function areTupleMembersReferentiallyEquals(a, b) {
   if (a.length !== b.length) return false
   for (let i = 0; i < a.length; i++)
     // Referential equality.
-    if (a[0] !== b[0]) return false
+    if (a[i] !== b[i]) return false
   return true
 }
