@@ -1,8 +1,9 @@
 name = "bright"
-version = "0.4.0"
+version = "1.0.0"
 
 description = "Be bright. Derive data in your Lustre model."
 licences = ["MIT"]
+gleam = ">= 1.6.0"
 
 [[links]]
 title = "Sponsor"
@@ -15,7 +16,7 @@ repo = "bright"
 
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 2.0.0"
-lustre = ">= 4.6.1 and < 5.0.0"
+lustre = ">= 4.0.0 and < 5.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

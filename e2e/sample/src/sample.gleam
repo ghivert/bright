@@ -21,8 +21,8 @@ fn now() -> Int {
   0
 }
 
-pub type Data {
-  Data(counter: Int)
+pub type State {
+  State(counter: Int)
 }
 
 pub type Computed {
@@ -32,8 +32,8 @@ pub type Computed {
 pub type Model {
   Model(
     node: String,
-    counter_1: Bright(Data, Computed),
-    counter_2: Bright(Data, Computed),
+    counter_1: Bright(State, Computed),
+    counter_2: Bright(State, Computed),
   )
 }
 
@@ -62,7 +62,7 @@ fn start(stylesheet: sketch.StyleSheet, update, node: String) {
 }
 
 fn init(node: String) {
-  let data = Data(counter: 0)
+  let data = State(counter: 0)
   let computed = Computed(double: 0, triple: 0, memoized: 0, last_lazy: 0)
   let counter = bright.init(data, computed)
   #(Model(node:, counter_1: counter, counter_2: counter), effect.none())
@@ -96,10 +96,10 @@ fn select_data_structure(model: Model, msg: Msg) {
 }
 
 /// Execute the full lifecycle, with derived data, and lazy computations.
-fn update(model: Bright(Data, Computed), msg: Counter) {
+fn update(model: Bright(State, Computed), msg: Counter) {
   use model <- bright.start(model)
   model
-  |> bright.update(update_data(_, msg))
+  |> bright.update(update_state(_, msg))
   |> bright.compute(fn(d, c) { Computed(..c, double: d.counter * 2) })
   |> bright.compute(fn(d, c) { Computed(..c, triple: d.counter * 3) })
   |> bright.lazy_compute(fn(d) { d.counter / 10 }, compute_memoized)
@@ -109,10 +109,10 @@ fn update(model: Bright(Data, Computed), msg: Counter) {
 }
 
 /// Raw update.
-fn update_data(model: Data, msg: Counter) {
+fn update_state(model: State, msg: Counter) {
   case msg {
-    Decrement -> Data(counter: model.counter - 1)
-    Increment -> Data(counter: model.counter + 1)
+    Decrement -> State(counter: model.counter - 1)
+    Increment -> State(counter: model.counter + 1)
   }
   |> pair.new(effect.none())
 }
@@ -189,7 +189,7 @@ fn navbar(model: Model) {
   }
 }
 
-fn counter(counter: Bright(Data, Computed)) {
+fn counter(counter: Bright(State, Computed)) {
   let #(data, computed) = bright.unwrap(counter)
   styles.counter_wrapper([], [
     styles.counter([], [
@@ -208,22 +208,22 @@ fn counter(counter: Bright(Data, Computed)) {
   ])
 }
 
-fn compute_memoized(data: Data, computed: Computed, _e) {
-  let memoized = data.counter * 1000
+fn compute_memoized(state: State, computed: Computed, _e) {
+  let memoized = state.counter * 1000
   let last_lazy = now()
   Computed(..computed, memoized:, last_lazy:)
 }
 
-fn warn_on_three(data: Data, _: Computed) {
-  use <- bool.guard(when: data.counter != 3, return: effect.none())
+fn warn_on_three(state: State, _: Computed) {
+  use <- bool.guard(when: state.counter != 3, return: effect.none())
   use _ <- effect.from
   io.println("This message happened because the counter equals 3!")
 }
 
-fn warn_on_three_multiple(data: Data, _: Computed) {
-  use <- bool.guard(when: data.counter % 3 != 0, return: effect.none())
+fn warn_on_three_multiple(state: State, _: Computed) {
+  use <- bool.guard(when: state.counter % 3 != 0, return: effect.none())
   use _ <- effect.from
-  let counter = int.to_string(data.counter)
+  let counter = int.to_string(state.counter)
   let msg = "This message happened because the counter is a multiple of 3!"
   [msg, "(" <> counter <> ")"]
   |> string.join(" ")

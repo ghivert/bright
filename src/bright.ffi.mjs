@@ -8,7 +8,12 @@ import * as gleam from "./gleam.mjs"
  * Gleam comparison (objects can be different referentially, but be the same
  * with structural comparison).
  * Not used in Erlang, because BEAM does not support references equality like
- * JavaScript. */
+ * JavaScript.
+ * @template First, Second
+ * @param {First} a
+ * @param {Second} b
+ * @return {bool}
+ */
 export function areDependenciesEqual(a, b) {
   // Referential equality.
   if (a === b) return true
@@ -18,7 +23,12 @@ export function areDependenciesEqual(a, b) {
 
 /** Accepts two data structures, and ensures they're both Gleam tuples, and
  * perform a light comparison between references. If at least one data references
- * in the tuples are different, give back hand to gleam.isEqual. */
+ * in the tuples are different, give back hand to gleam.isEqual.
+ * @template First, Second
+ * @param {First} a
+ * @param {Second} b
+ * @return {bool}
+ */
 function areTupleMembersReferentiallyEquals(a, b) {
   if (!Array.isArray(a)) return false
   if (!Array.isArray(b)) return false
