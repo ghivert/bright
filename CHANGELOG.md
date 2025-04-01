@@ -1,4 +1,4 @@
-## v1.0.0 — Unreleased
+## v1.0.0 — 2025-04-01
 
 - Release first version of Bright!
 - Bright supports `state` & `computed`, as well as managing side-effects.
