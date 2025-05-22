@@ -193,6 +193,7 @@ pub fn lazy_schedule(
 ///   ])
 /// }
 /// ```
+@deprecated("Use `bright.state` and `bright.computed` instead.")
 pub fn unwrap(bright: Bright(state, computed)) -> #(state, computed) {
   #(bright.state, bright.computed)
 }

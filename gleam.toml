@@ -1,5 +1,5 @@
 name = "bright"
-version = "1.0.0"
+version = "1.0.1"
 
 description = "Be bright. Derive data in your Lustre model."
 licences = ["MIT"]
