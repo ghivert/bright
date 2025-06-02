@@ -264,7 +264,7 @@ fn lazy_wrap(
   compute_: fn(state, computed, selection) -> output,
 ) -> #(Bright(state, computed), Effect(msg)) {
   let selected_data = selector({ bright.0 }.state)
-  let selections = [dynamic.from(selected_data), ..{ bright.0 }.selections]
+  let selections = [coerce(selected_data), ..{ bright.0 }.selections]
   let compute_ = fn(data, computed) { compute_(data, computed, selected_data) }
   let bright = #(Bright(..bright.0, selections:), bright.1)
   case { bright.0 }.past_selections {
@@ -295,5 +295,9 @@ fn panic_if_different_computations_count(
 /// browser. Otherwise, rely on Erlang equality.
 @external(javascript, "./bright.ffi.mjs", "areDependenciesEqual")
 fn are_dependencies_equal(a: a, b: b) -> Bool {
-  dynamic.from(a) == dynamic.from(b)
+  coerce(a) == coerce(b)
 }
+
+@external(erlang, "bright_ffi", "coerce")
+@external(javascript, "./bright.ffi.mjs", "coerce")
+fn coerce(a: a) -> b

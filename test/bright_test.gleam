@@ -1,4 +1,3 @@
-import gleam/dynamic
 import gleeunit
 import gleeunit/should
 
@@ -8,8 +7,12 @@ pub fn main() {
 
 @external(javascript, "./bright.ffi.mjs", "areDependenciesEqual")
 fn are_dependencies_equal(a: a, b: b) -> Bool {
-  dynamic.from(a) == dynamic.from(b)
+  coerce(a) == coerce(b)
 }
+
+@external(erlang, "bright_ffi", "coerce")
+@external(javascript, "./bright.ffi.mjs", "coerce")
+fn coerce(a: a) -> b
 
 // gleeunit test functions end in `_test`
 pub fn int_equal_test() {
